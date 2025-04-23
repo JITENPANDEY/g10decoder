@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>G10Decoder</title>
+    <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            overflow-x: hidden;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            transition: background 0.3s, color 0.3s;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            /* max-width: 1000px; */
+            min-height: 90vh;
+            background: var(--container-bg);
+            color: var(--text);
+            border-radius: 16px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            transition: background 0.3s, color 0.3s;
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+        }
+
+        .header {
+            font-family: 'Pacifico', cursive;
+            text-align: center;
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 20px;
+        }
+
+        .content {
+            display: flex;
+            justify-content: space-between;
+            gap: 40px;
+            flex-wrap: wrap;
+            transition: max-height 0.5s ease;
+        }
+
+        .section {
+            width: 48%;
+            padding: 25px;
+            background: var(--input-bg);
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+            position: relative;
+            transition: background 0.3s;
+            margin-top: 10px;
+        }
+
+        .section:hover {
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            background: var(--input-bg);
+            color: var(--text);
+            resize: vertical;
+            min-height: 120px;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            border-color: var(--accent);
+            outline: none;
+        }
+
+        .output {
+            margin-top: 15px;
+            position: relative;
+        }
+
+        .json-output {
+            background: var(--entry-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: var(--text);
+            overflow: auto;
+        }
+
+        button {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: var(--accent-hover);
+        }
+
+        :root {
+            --bg: #1e1e1e;
+            --text: #f0f0f0;
+            --accent: #00bcd4;
+            --accent-hover: #008fa1;
+            --container-bg: #2c2c2c;
+            --input-bg: #333;
+            --entry-bg: #444;
+            --border: #555;
+            --toggle-bg: #444;
+            --toggle-hover-bg: #666;
+        }
+
+        .light {
+            --bg: #f5f7fa;
+            --text: #333;
+            --accent: #3498db;
+            --accent-hover: #2980b9;
+            --container-bg: #ffffff;
+            --input-bg: #f9f9f9;
+            --entry-bg: #f0f3f5;
+            --border: #ddd;
+            --toggle-bg: #ddd;
+            --toggle-hover-bg: #bbb;
+        }
+
+        .light-mode-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 60px;
+            height: 30px;
+            background-color: var(--toggle-bg);
+            border-radius: 30px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        .light-mode-toggle i {
+            font-size: 18px;
+            color: white;
+        }
+
+        .light-mode-toggle.light-mode {
+            background-color: var(--accent);
+        }
+
+        .light-mode-toggle i.sun {
+            display: none;
+        }
+
+        .light-mode-toggle.light-mode i.moon {
+            display: none;
+        }
+
+        .light-mode-toggle.light-mode i.sun {
+            display: block;
+        }
+
+        .light-mode-toggle i.moon {
+            display: block;
+        }
+
+        details summary {
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 20px;
+            padding: 10px;
+            background-color: var(--entry-bg);
+            border-radius: 8px;
+            color: var(--text);
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 14px;
+            color: var(--text);
+            margin-top: 30px;
+            padding: 20px;
+            background: var(--container-bg);
+            border-top: 1px solid var(--border);
+            border-radius: 0 0 16px 16px;
+        }
+
+        details[open] .content {
+            animation: expand 0.4s ease-in-out forwards;
+        }
+
+        details:not([open]) .content {
+            animation: collapse 0.3s ease-in-out forwards;
+        }
+
+        @keyframes expand {
+            0% {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes collapse {
+            0% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+        }
+
+        details .content {
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container" id="app">
+        <div class="light-mode-toggle" onclick="togglelightMode()">
+            <i class="moon">🌙</i>
+            <i class="sun">🌞</i>
+        </div>
+        <div class="header">🔐 &lt;G10Decoder&gt; 🔐</div>
+
+        <details close>
+            <summary>🛡️ Encode / Decode</summary>
+            <div class="content">
+                <!-- Encryption Section -->
+                <div class="section">
+                    <label for="encrypt">Text to Encrypt:</label>
+                    <textarea id="encrypt" placeholder="Enter the text to encrypt"></textarea>
+                    <button onclick="encrypt()">🔒 Encrypt</button>
+                    <label>Encrypted Output (Base64):</label>
+                    <div class="output">
+                        <div id="encrypted-output" class="json-output"></div>
+                    </div>
+                </div>
+
+                <!-- Decryption Section -->
+                <div class="section">
+                    <label for="encrypted-input">Encrypted Base64 to Decrypt:</label>
+                    <textarea id="encrypted-input"
+                        placeholder="Paste encrypted string(s) here, comma-separated"></textarea>
+                    <button onclick="decrypt()">🔓 Decrypt</button>
+                    <label>Decrypted Output:</label>
+                    <div class="output">
+                        <div id="decrypted-output" class="json-output"></div>
+                    </div>
+                </div>
+            </div>
+        </details>
+        <details close>
+            <summary>🔄 Task Config Reload</summary>
+            <div class="content">
+                <div class="section">
+                    <label>Reload Task Configuration (SIT):</label>
+                    <button onclick="reloadTaskConfig('sit')">🔄 Reload Config SIT</button>
+                    <label>API Response:</label>
+                    <div class="output">
+                        <div id="config-reload-output-sit" class="json-output">Click reload to see result...</div>
+                    </div>
+                </div>
+                <div class="section">
+                    <label>Reload Task Configuration (PROD):</label>
+                    <button onclick="reloadTaskConfig('prod')">🔄 Reload Config PROD</button>
+                    <label>API Response:</label>
+                    <div class="output">
+                        <div id="config-reload-output-prod" class="json-output">Click reload to see result...</div>
+                    </div>
+                </div>
+
+            </div>
+        </details>
+        <details close>
+            <summary>⚙️ Drift Config Reload</summary>
+            <div class="content">
+                <div class="section">
+                    <label>Reload Drift Configuration (SIT):</label>
+                    <button onclick="reloadDriftConfig('sit')">🔄 Reload Drift SIT</button>
+                    <label>API Response:</label>
+                    <div class="output">
+                        <div id="drift-reload-output-sit" class="json-output">Click reload to see result...</div>
+                    </div>
+                </div>
+                <div class="section">
+                    <label>Reload Drift Configuration (PROD):</label>
+                    <button onclick="reloadDriftConfig('prod')">🔄 Reload Drift PROD</button>
+                    <label>API Response:</label>
+                    <div class="output">
+                        <div id="drift-reload-output-prod" class="json-output">Click reload to see result...</div>
+                    </div>
+                </div>
+            </div>
+        </details>
+        <details close>
+            <summary>🚀 Honcho State Jump</summary>
+            <div class="content" style="justify-content: center; display: flex;">
+                <div class="section" style="width: 70%;">
+                    <label for="correlation-id">Correlation ID:</label>
+                    <input type="text" id="correlation-id" placeholder="Enter Correlation ID (UUID)"
+                        style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text);" />
+
+                    <label for="next-state">Next State:</label>
+                    <input type="text" id="next-state" placeholder="Enter Next State"
+                        style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text);" />
+
+                    <button onclick="triggerHonchoStateJump()">🚀 Trigger State Jump SIT</button>
+
+                    <label>API Response:</label>
+                    <div class="output">
+                        <div id="honcho-state-output" class="json-output">Click trigger to see result...</div>
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <footer class="footer">
+            © 2025 Bharti Airtel Limited. All rights reserved.<br />
+            Internal Utility – Designed & Engineered by Jiten Pandey, Senior Software Engineer
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener("contextmenu", e => e.preventDefault());
+        document.addEventListener("keydown", e => {
+            if (e.ctrlKey && ["U", "S", "C", "I", "J"].includes(e.key.toUpperCase())) {
+                e.preventDefault();
+            }
+            if (e.key === "F12") {
+                e.preventDefault();
+            }
+        });
+
+        // Smooth transition fix for collapsing <details>
+            document.querySelectorAll("details").forEach((detail) => {
+            detail.addEventListener("toggle", () => {
+                const content = detail.querySelector(".content");
+                if (content) {
+                    if (detail.open) {
+                        content.style.display = "flex";
+                    } else {
+                        setTimeout(() => {
+                            content.style.display = "none";
+                        }, 300); // Matches collapse animation duration
+                    }
+                }
+            });
+        });
+
+        const KEY = "Konnect123LOG321";
+        const IV = "RandomInitVector";
+
+        function encrypt() {
+            let text = document.getElementById("encrypt").value.trim();
+            const outputDiv = document.getElementById("encrypted-output");
+            outputDiv.innerHTML = "";
+
+            if (!text) {
+                alert("Please enter text to encrypt.");
+                return;
+            }
+
+            text = text.replace(/\s+/g, ' ').trim();
+
+            const key = CryptoJS.enc.Utf8.parse(KEY);
+            const iv = CryptoJS.enc.Utf8.parse(IV);
+
+            const encrypted = CryptoJS.AES.encrypt(text, key, {
+                iv: iv,
+                mode: CryptoJS.mode.CBC,
+                padding: CryptoJS.pad.Pkcs7
+            });
+
+            const encryptedBase64 = encrypted.toString();
+            outputDiv.innerHTML = encryptedBase64;
+            selectText(outputDiv);
+        }
+
+        function decrypt() {
+            const input = document.getElementById("encrypted-input").value.trim();
+            const outputDiv = document.getElementById("decrypted-output");
+            outputDiv.innerHTML = "";
+
+            if (!input) {
+                alert("Please paste an encrypted string.");
+                return;
+            }
+
+            const key = CryptoJS.enc.Utf8.parse(KEY);
+            const iv = CryptoJS.enc.Utf8.parse(IV);
+
+            const encryptedStrings = input.split(",").map(str => str.trim());
+
+            try {
+                const decryptedArray = encryptedStrings.map((encStr) => {
+                    const decrypted = CryptoJS.AES.decrypt(encStr, key, {
+                        iv: iv,
+                        mode: CryptoJS.mode.CBC,
+                        padding: CryptoJS.pad.Pkcs7
+                    });
+
+                    let plaintext = decrypted.toString(CryptoJS.enc.Utf8);
+                    if (!plaintext) throw new Error("Decryption failed");
+
+                    let formattedJson = plaintext;
+                    try {
+                        const parsedJson = JSON.parse(plaintext);
+                        formattedJson = JSON.stringify(parsedJson, null, 2);
+                    } catch (e) { }
+
+                    return formattedJson;
+                });
+
+                outputDiv.innerHTML = decryptedArray.join(",\n");
+                selectText(outputDiv);
+            } catch (e) {
+                outputDiv.innerHTML = "⚠️ Decryption failed.";
+            }
+        }
+
+        function selectText(element) {
+            const range = document.createRange();
+            range.selectNodeContents(element);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+
+        function togglelightMode() {
+            document.body.classList.toggle("light");
+            const toggle = document.querySelector(".light-mode-toggle");
+            toggle.classList.toggle("light-mode");
+        }
+
+        function reloadTaskConfig(env) {
+            const outputDivId = env === "sit" ? "config-reload-output-sit" : "config-reload-output-prod";
+            const outputDiv = document.getElementById(outputDivId);
+            outputDiv.innerHTML = "⏳ Requesting...Please wait!!!";
+
+            let url = "";
+            if (env === "sit") {
+                url = "http://task-manager-service.sit.airtelwork.airtelworld.in/config/reload";
+            } else if (env === "prod") {
+                url = "https://task-manager-service.airtelwork.com/config/reload";
+            } else {
+                outputDiv.innerHTML = "❌ Invalid environment selected.";
+                return;
+            }
+
+            fetch(url)
+                .then(async response => {
+                    const text = await response.text();
+                    try {
+                        const json = JSON.parse(text);
+                        outputDiv.innerHTML = JSON.stringify(json, null, 2);
+                    } catch (err) {
+                        outputDiv.innerHTML = text;
+                    }
+                    selectText(outputDiv);
+                })
+                .catch(error => {
+                    outputDiv.innerHTML = `❌ Failed to reload drift config: ${error}`;
+                });
+        }
+        function reloadDriftConfig(env) {
+            const outputDivId = env === "sit" ? "drift-reload-output-sit" : "drift-reload-output-prod";
+            const outputDiv = document.getElementById(outputDivId);
+            outputDiv.innerHTML = "⏳ Requesting...Please wait!!!";
+
+            let url = "";
+            if (env === "sit") {
+                url = "http://task-manager-service.sit.airtelwork.airtelworld.in/drift/reload";
+            } else if (env === "prod") {
+                url = "https://task-manager-service.airtelwork.com/drift/reload";
+            } else {
+                outputDiv.innerHTML = "❌ Invalid environment selected.";
+                return;
+            }
+
+            fetch(url)
+                .then(async response => {
+                    const text = await response.text();
+                    try {
+                        const json = JSON.parse(text);
+                        outputDiv.innerHTML = JSON.stringify(json, null, 2);
+                    } catch (err) {
+                        outputDiv.innerHTML = text;
+                    }
+                    selectText(outputDiv);
+                })
+                .catch(error => {
+                    outputDiv.innerHTML = `❌ Failed to reload drift config: ${error}`;
+                });
+        }
+
+        function triggerHonchoStateJump() {
+            const correlationId = document.getElementById("correlation-id").value.trim();
+            const nextState = document.getElementById("next-state").value.trim();
+            const outputDiv = document.getElementById("honcho-state-output");
+            outputDiv.innerHTML = "⏳ Requesting...Please wait!!!";
+
+            if (!correlationId || !nextState) {
+                alert("Please fill in both Correlation ID and Next State.");
+                return;
+            }
+
+            const url = `http://honcho-service.sit.airtelwork.airtelworld.in/honcho/stateJump/${correlationId}`;
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            const body = JSON.stringify({
+                "createContext": false,
+                "nextState": nextState,
+                "transitionType": "dummy"
+            });
+
+            fetch(url, {
+                method: 'POST',
+                headers: headers,
+                body: body
+            })
+                .then(async response => {
+                    const text = await response.text();
+                    try {
+                        const json = JSON.parse(text);
+                        outputDiv.innerHTML = JSON.stringify(json, null, 2);
+                    } catch (err) {
+                        outputDiv.innerHTML = text;
+                    }
+                    selectText(outputDiv);
+                })
+                .catch(error => {
+                    outputDiv.innerHTML = `❌ Failed to trigger state jump: ${error}`;
+                });
+        }
+
+
+
+    </script>
+
+</body>
+
+</html>
